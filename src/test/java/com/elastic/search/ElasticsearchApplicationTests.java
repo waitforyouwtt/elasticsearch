@@ -7,9 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import java.util.Arrays;
-import java.util.IntSummaryStatistics;
+/*import java.util.IntSummaryStatistics;*/
 import java.util.List;
-import java.util.stream.Collectors;
+/*import java.util.stream.Collectors;*/
 
 @Slf4j
 @SpringBootTest
@@ -36,13 +36,13 @@ class ElasticsearchApplicationTests {
                 sb.append( "|" );
             }
         }*/
-        String body = body(goodsInfoList);
+       /* String body = body(goodsInfoList);
         log.info("得到的结果：{}",body);
-
+*/
     }
-    private String body(List<GoodsInfo> goodsInfos){
+/*    private String body(List<GoodsInfo> goodsInfos){
         return  goodsInfos.stream().map(GoodsInfo::getProductSkuDesc).collect(Collectors.joining("|"));
-    }
+    }*/
 
     @Test
     public void rsaTest(){
@@ -73,4 +73,12 @@ class ElasticsearchApplicationTests {
             System.out.println("状态:" + status);
     }
 
+    @Test
+    public void string(){
+         String a = "123";
+         String b = "123";
+        System.out.println(a == b);
+        System.out.println(a.equals( b ));
+    }
 }
+

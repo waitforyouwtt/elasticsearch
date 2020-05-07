@@ -42,11 +42,28 @@ public class ElasticSearchOld {
         TransportClient client = new PreBuiltTransportClient(Settings.EMPTY)
                 .addTransportAddress(new TransportAddress(InetAddress.getByName("127.0.0.1"), 9300));
         //继续添加其他地址
-        //on shutdown
-        client.close();
 
         //创建文档
-       XContentBuilder mapping = jsonBuilder().startObject()
+        createDocment(client);
+        //修改文档:method 1
+        updateMethodOne(client);
+        //修改文档：method 2
+        updateMethodTwo(client);
+        //查询文档：
+        query(client);
+        //删除文档
+        deleteDoc(client);
+
+        //on shutdown
+        client.close();
+    }
+
+    /**
+     * 创建文档
+     */
+    private static void createDocment(TransportClient client) throws IOException {
+        //创建文档
+        XContentBuilder mapping = jsonBuilder().startObject()
                 .startObject( "settings" ).field( "number_of_shard",1 ) //设置分片数量
                 .field("number_of_replicas",0  ) //设置副本数量
                 .endObject().endObject()
@@ -70,8 +87,9 @@ public class ElasticSearchOld {
         }else{
             log.info( "index create failed" );
         }
+    }
 
-        //修改文档:method 1
+    private static void updateMethodOne(TransportClient client) throws IOException, ExecutionException, InterruptedException {
         UpdateRequest updateRequest =new UpdateRequest(  );
         updateRequest.index("indexName");
         updateRequest.type("typeName");
@@ -79,7 +97,9 @@ public class ElasticSearchOld {
         updateRequest.doc(jsonBuilder().startObject(  )
                 .field( "type","filed" ).endObject());
         client.update( updateRequest ).get();
+    }
 
+    private static void updateMethodTwo(TransportClient client) throws IOException, ExecutionException, InterruptedException {
         //修改文档
         IndexRequest indexRequest = new IndexRequest( "indexName","typeName","3" )
                 .source( jsonBuilder().startObject(  )
@@ -93,7 +113,9 @@ public class ElasticSearchOld {
                 .doc( jsonBuilder().startObject().field( "type","file" ).endObject() )
                 .upsert( indexRequest );
         client.update( updateRequest1 ).get();
+    }
 
+    private static void query(TransportClient client){
         //查询文档
         GetResponse response1 = client.prepareGet("secilog","log","1").get();
         String source = response1.getSource().toString();
@@ -101,8 +123,9 @@ public class ElasticSearchOld {
         String indexName = response1.getIndex();
         String type = response1.getType();
         String id = response1.getId();
+    }
 
-        //删除文档
+    private static void deleteDoc(TransportClient client){
         DeleteResponse deleteResponse = client.prepareDelete("decilog","log","4").get();
         boolean isFound = deleteResponse.isFragment();
         DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest( "secilog" );
