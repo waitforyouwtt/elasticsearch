@@ -1,31 +1,40 @@
 package com.elastic.search.service.impl;
 
+import com.alibaba.fastjson.JSON;
+import com.elastic.search.constant.ESConstant;
 import com.elastic.search.entity.Person;
 import com.elastic.search.service.PersonService;
 import com.elastic.search.util.ElasticsearchUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.action.DocWriteResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.get.GetRequest;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.IndicesClient;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cglib.beans.BeanMap;
 import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @Author: luoxian
@@ -115,7 +124,7 @@ public class PersonServiceImpl implements PersonService {
         jsonMap.put("updateTime",person.getUpdateTime());
 
         //创建索引创建对象
-        IndexRequest indexRequest = new IndexRequest("user_info","doc");
+        IndexRequest indexRequest = new IndexRequest(ESConstant.index,ESConstant.doc_type);
         //文档内容
         indexRequest.source(jsonMap);
         //通过client进行http的请求
@@ -135,7 +144,7 @@ public class PersonServiceImpl implements PersonService {
      */
     @Override
     public void updateDoc(Person person) throws IOException {
-        IndexRequest indexRequest = new IndexRequest("user_info").type("doc").id(String.valueOf(person.getId())).source(BeanMap.create(person));
+        IndexRequest indexRequest = new IndexRequest(ESConstant.index).type(ESConstant.doc_type).id(String.valueOf(person.getId())).source(BeanMap.create(person));
 
         // 创建更新请求，指定index，type,id,如果indexRequest 有值 （存在该数据）则用doc指定的内容更新indexRequest中指定的source，
         // 如果不存在该数据，则插入一条indexRequest指定的source数据
@@ -159,7 +168,7 @@ public class PersonServiceImpl implements PersonService {
         BulkRequest bulkRequest = new BulkRequest();
 
         for (Person person : personList) {
-            IndexRequest indexRequest = new IndexRequest("index").type("type").id(String.valueOf(person.getId()))
+            IndexRequest indexRequest = new IndexRequest(ESConstant.index).type(ESConstant.doc_type).id(String.valueOf(person.getId()))
                     .source(BeanMap.create(person));
 
             // 创建更新请求，指定index，type,id,如果indexRequest 有值 （存在该数据）则用doc指定的内容更新indexRequest中指定的source，
@@ -169,13 +178,164 @@ public class PersonServiceImpl implements PersonService {
 
             // 将更新请求加入批量操作请求
             bulkRequest.add(updateRequest);
-        }​
+        }
         try {
             // 执行批量操作
             restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
         } catch (IOException e) {
             log.error(e.getMessage(), e);
         }
+    }
+
+    @Override
+    public Person queryESById(String id) throws IOException {
+        GetRequest getRequest = new GetRequest(ESConstant.index,ESConstant.doc_type,id);
+        GetResponse getResponse = restHighLevelClient.get(getRequest,RequestOptions.DEFAULT);
+        //得到文档的内容
+        Map<String, Object> dataSource = getResponse.getSourceAsMap();
+        Person person = JSON.parseObject(JSON.toJSONString(dataSource), Person.class);
+        return person;
+    }
+
+    /**
+     * 查询全部数据且过滤字段
+     *
+     * @return
+     */
+    @Override
+    public List<Person> queryFetchSource() throws IOException {
+        //搜索请求对象
+        SearchRequest searchRequest = new SearchRequest(ESConstant.index);
+        //指定类型
+        searchRequest.types(ESConstant.doc_type);
+        //搜索源构建对象
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        //搜索方式
+        //matchAllQuery搜索全部
+        searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+        //设置源字段过虑,第一个参数结果集包括哪些字段，第二个参数表示结果集不包括哪些字段
+        searchSourceBuilder.fetchSource(new String[]{ "id", "username", "age", "birthday", "deposit", "address","status","createTime"},new String[]{});
+        //向搜索请求对象中设置搜索源
+        searchRequest.source(searchSourceBuilder);
+        //执行搜索,向ES发起http请求
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+        //搜索结果
+        SearchHits hits = searchResponse.getHits();
+        //匹配到的总记录数
+        TotalHits totalHits = hits.getTotalHits();
+        //得到匹配度高的文档
+        SearchHit[] searchHits = hits.getHits();
+        //日期格式化对象
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+        List<Person> personList = new ArrayList<>();
+        for(SearchHit hit:searchHits){
+            //文档的主键
+            String id = hit.getId();
+            //源文档内容
+            Map<String, Object> dataSource = hit.getSourceAsMap();
+            Person person = JSON.parseObject(JSON.toJSONString(dataSource), Person.class);
+            personList.add(person);
+        }
+        return personList;
+    }
+
+    /**
+     * 分页查询
+     *
+     * @return
+     */
+    @Override
+    public List<Person> queryByPage() throws IOException {
+        //搜索请求对象
+        SearchRequest searchRequest = new SearchRequest(ESConstant.index);
+        //指定类型
+        searchRequest.types(ESConstant.doc_type);
+        //搜索源构建对象
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        //设置分页参数
+        //页码
+        int page = 1;
+        //每页记录数
+        int size = 1;
+        //计算出记录起始下标
+        int from  = (page-1)*size;
+        searchSourceBuilder.from(from);//起始记录下标，从0开始
+        searchSourceBuilder.size(size);//每页显示的记录数
+        //搜索方式
+        //matchAllQuery搜索全部
+        searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+        //设置源字段过虑,第一个参数结果集包括哪些字段，第二个参数表示结果集不包括哪些字段
+        searchSourceBuilder.fetchSource(new String[]{ "id", "username", "age", "birthday", "deposit", "address","status","createTime"},new String[]{});
+        //向搜索请求对象中设置搜索源
+        searchRequest.source(searchSourceBuilder);
+        //执行搜索,向ES发起http请求
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest,RequestOptions.DEFAULT);
+        //搜索结果
+        SearchHits hits = searchResponse.getHits();
+        //匹配到的总记录数
+        TotalHits totalHits = hits.getTotalHits();
+        //得到匹配度高的文档
+        SearchHit[] searchHits = hits.getHits();
+        //日期格式化对象
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        List<Person> personList = new ArrayList<>();
+        for(SearchHit hit:searchHits){
+            //文档的主键
+            String id = hit.getId();
+            //源文档内容
+            Map<String, Object> dataSource = hit.getSourceAsMap();
+            Person person = JSON.parseObject(JSON.toJSONString(dataSource), Person.class);
+            personList.add(person);
+        }
+        return personList;
+    }
+
+    @Override
+    public List<Person> termQuery(Person person) throws IOException {
+        //搜索请求对象
+        SearchRequest searchRequest = new SearchRequest(ESConstant.index);
+        //指定类型
+        searchRequest.types(ESConstant.doc_type);
+        //搜索源构建对象
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        //设置分页参数
+        //页码
+        int page = 1;
+        //每页记录数
+        int size = 1;
+        //计算出记录起始下标
+        int from  = (page-1)*size;
+        searchSourceBuilder.from(from);//起始记录下标，从0开始
+        searchSourceBuilder.size(size);//每页显示的记录数
+        //搜索方式
+        //termQuery
+        searchSourceBuilder.query(QueryBuilders.fuzzyQuery("username","*".concat(person.getUsername())));
+
+        //设置源字段过虑,第一个参数结果集包括哪些字段，第二个参数表示结果集不包括哪些字段
+        searchSourceBuilder.fetchSource(new String[]{ "id", "username", "age", "birthday", "deposit", "address","status","createTime"},new String[]{});
+        //向搜索请求对象中设置搜索源
+        searchRequest.source(searchSourceBuilder);
+        //执行搜索,向ES发起http请求
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest,RequestOptions.DEFAULT);
+        //搜索结果
+        SearchHits hits = searchResponse.getHits();
+        //匹配到的总记录数
+        TotalHits totalHits = hits.getTotalHits();
+        //得到匹配度高的文档
+        SearchHit[] searchHits = hits.getHits();
+        //日期格式化对象
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        List<Person> personList = new ArrayList<>();
+        for(SearchHit hit : searchHits){
+            //文档的主键
+            String id = hit.getId();
+            //源文档内容
+            Map<String, Object> dataSource = hit.getSourceAsMap();
+            Person person2 = JSON.parseObject(JSON.toJSONString(dataSource), Person.class);
+            personList.add(person2);
+        }
+        return personList;
     }
 
 }

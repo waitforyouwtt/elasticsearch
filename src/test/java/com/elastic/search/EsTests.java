@@ -1,24 +1,14 @@
 package com.elastic.search;
 
-import com.elastic.search.entity.Person;
-import com.elastic.search.util.DateUtil;
-import com.elastic.search.util.ElasticsearchUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.search.TotalHits;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.update.UpdateRequest;
-import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.text.Text;
-import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -31,11 +21,9 @@ import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
 import org.elasticsearch.search.sort.SortOrder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.beans.BeanMap;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -47,178 +35,6 @@ class EsTests extends ElasticsearchApplicationTests{
 
 	@Autowired
 	RestHighLevelClient client;
-
-
-	//查询文档
-	@Test
-	public void testGetDoc() throws IOException {
-		//查询请求对象
-		GetRequest getRequest = new GetRequest("elasticsearch_test","_doc","EGptNnIBywKalVIKEbCN");
-		GetResponse getResponse = client.get(getRequest,RequestOptions.DEFAULT);
-		//得到文档的内容
-		Map<String, Object> sourceAsMap = getResponse.getSourceAsMap();
-		System.out.println(sourceAsMap);
-	}
-
-	//搜索全部记录
-	@Test
-	public void testSearchAll() throws IOException, ParseException {
-		//搜索请求对象
-		SearchRequest searchRequest = new SearchRequest("elasticsearch_test");
-		//指定类型
-		searchRequest.types("doc");
-		//搜索源构建对象
-		SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-		//搜索方式
-		//matchAllQuery搜索全部
-		searchSourceBuilder.query(QueryBuilders.matchAllQuery());
-		//设置源字段过虑,第一个参数结果集包括哪些字段，第二个参数表示结果集不包括哪些字段
-		searchSourceBuilder.fetchSource(new String[]{"name","studymodel","price","timestamp"},new String[]{});
-		//向搜索请求对象中设置搜索源
-		searchRequest.source(searchSourceBuilder);
-		//执行搜索,向ES发起http请求
-		SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-		//搜索结果
-		SearchHits hits = searchResponse.getHits();
-		//匹配到的总记录数
-		TotalHits totalHits = hits.getTotalHits();
-		//得到匹配度高的文档
-		SearchHit[] searchHits = hits.getHits();
-		//日期格式化对象
-		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		for(SearchHit hit:searchHits){
-			//文档的主键
-			String id = hit.getId();
-			//源文档内容
-			Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-			String name = (String) sourceAsMap.get("name");
-			//由于前边设置了源文档字段过虑，这时description是取不到的
-			String description = (String) sourceAsMap.get("description");
-			//学习模式
-			String studymodel = (String) sourceAsMap.get("studymodel");
-			//价格
-			Double price = (Double) sourceAsMap.get("price");
-			//日期
-			Date timestamp = dateFormat.parse((String) sourceAsMap.get("timestamp"));
-			System.out.println(name);
-			System.out.println(studymodel);
-			System.out.println(description);
-		}
-
-	}
-
-	//分页查询
-	@Test
-	public void testSearchPage() throws IOException, ParseException {
-		//搜索请求对象
-		SearchRequest searchRequest = new SearchRequest("elasticsearch_test");
-		//指定类型
-		searchRequest.types("doc");
-		//搜索源构建对象
-		SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-		//设置分页参数
-		//页码
-		int page = 1;
-		//每页记录数
-		int size = 1;
-		//计算出记录起始下标
-		int from  = (page-1)*size;
-		searchSourceBuilder.from(from);//起始记录下标，从0开始
-		searchSourceBuilder.size(size);//每页显示的记录数
-		//搜索方式
-		//matchAllQuery搜索全部
-		searchSourceBuilder.query(QueryBuilders.matchAllQuery());
-		//设置源字段过虑,第一个参数结果集包括哪些字段，第二个参数表示结果集不包括哪些字段
-		searchSourceBuilder.fetchSource(new String[]{"name","studymodel","price","timestamp"},new String[]{});
-		//向搜索请求对象中设置搜索源
-		searchRequest.source(searchSourceBuilder);
-		//执行搜索,向ES发起http请求
-		SearchResponse searchResponse = client.search(searchRequest,RequestOptions.DEFAULT);
-		//搜索结果
-		SearchHits hits = searchResponse.getHits();
-		//匹配到的总记录数
-		TotalHits totalHits = hits.getTotalHits();
-		//得到匹配度高的文档
-		SearchHit[] searchHits = hits.getHits();
-		//日期格式化对象
-		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		for(SearchHit hit:searchHits){
-			//文档的主键
-			String id = hit.getId();
-			//源文档内容
-			Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-			String name = (String) sourceAsMap.get("name");
-			//由于前边设置了源文档字段过虑，这时description是取不到的
-			String description = (String) sourceAsMap.get("description");
-			//学习模式
-			String studymodel = (String) sourceAsMap.get("studymodel");
-			//价格
-			Double price = (Double) sourceAsMap.get("price");
-			//日期
-			Date timestamp = dateFormat.parse((String) sourceAsMap.get("timestamp"));
-			System.out.println(name);
-			System.out.println(studymodel);
-			System.out.println(description);
-		}
-
-	}
-
-	//TermQuery
-	@Test
-	public void testTermQuery() throws IOException, ParseException {
-		//搜索请求对象
-		SearchRequest searchRequest = new SearchRequest("elasticsearch_test");
-		//指定类型
-		searchRequest.types("doc");
-		//搜索源构建对象
-		SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-		//设置分页参数
-		//页码
-		int page = 1;
-		//每页记录数
-		int size = 1;
-		//计算出记录起始下标
-		int from  = (page-1)*size;
-		searchSourceBuilder.from(from);//起始记录下标，从0开始
-		searchSourceBuilder.size(size);//每页显示的记录数
-		//搜索方式
-		//termQuery
-		searchSourceBuilder.query(QueryBuilders.termQuery("name","spring"));
-		//设置源字段过虑,第一个参数结果集包括哪些字段，第二个参数表示结果集不包括哪些字段
-		searchSourceBuilder.fetchSource(new String[]{"name","studymodel","price","timestamp"},new String[]{});
-		//向搜索请求对象中设置搜索源
-		searchRequest.source(searchSourceBuilder);
-		//执行搜索,向ES发起http请求
-		SearchResponse searchResponse = client.search(searchRequest,RequestOptions.DEFAULT);
-		//搜索结果
-		SearchHits hits = searchResponse.getHits();
-		//匹配到的总记录数
-		TotalHits totalHits = hits.getTotalHits();
-		//得到匹配度高的文档
-		SearchHit[] searchHits = hits.getHits();
-		//日期格式化对象
-		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		for(SearchHit hit:searchHits){
-			//文档的主键
-			String id = hit.getId();
-			//源文档内容
-			Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-			String name = (String) sourceAsMap.get("name");
-			//由于前边设置了源文档字段过虑，这时description是取不到的
-			String description = (String) sourceAsMap.get("description");
-			//学习模式
-			String studymodel = (String) sourceAsMap.get("studymodel");
-			//价格
-			Double price = (Double) sourceAsMap.get("price");
-			//日期
-			Date timestamp = dateFormat.parse((String) sourceAsMap.get("timestamp"));
-			System.out.println(name);
-			System.out.println(studymodel);
-			System.out.println(description);
-		}
-
-	}
-
 
 	//根据id查询
 	@Test

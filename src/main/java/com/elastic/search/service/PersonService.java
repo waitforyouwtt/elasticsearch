@@ -37,4 +37,26 @@ public interface PersonService {
      */
     void batchInsert(List<Person> personList);
 
+    /**
+     * 根据id 查询ES
+     * @param id
+     * @return
+     * @throws IOException
+     */
+    Person queryESById(String id) throws IOException;
+
+    /**
+     * 查询全部数据且过滤字段
+     * @return
+     */
+    List<Person> queryFetchSource() throws IOException;
+
+    /**
+     * 分页查询
+     * @return
+     */
+    List<Person> queryByPage() throws IOException;
+
+    List<Person> termQuery(Person person) throws IOException;
+
 }

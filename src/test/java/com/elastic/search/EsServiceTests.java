@@ -1,5 +1,6 @@
 package com.elastic.search;
 
+import com.alibaba.fastjson.JSON;
 import com.elastic.search.entity.Person;
 import com.elastic.search.service.PersonService;
 import com.elastic.search.util.DateUtil;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 
 @Component
@@ -52,6 +54,33 @@ class EsServiceTests extends ElasticsearchApplicationTests{
 		person.setStatus(0);
 		person.setUpdateTime(new Date());
 		personService.updateDoc(person);
+	}
+
+	@Test
+	public void queryESById() throws IOException {
+		String id = "\"BbHpSnIBSuUbzMFMyzl7\"";
+		Person person = personService.queryESById("1");
+		log.info("根据id 查询es:{}", JSON.toJSONString(person));
+	}
+
+	@Test
+	public void queryFetchSource() throws IOException {
+		List<Person> personList = personService.queryFetchSource();
+		log.info("查询全部数据，且过滤想要的字段：{}",JSON.toJSONString(personList));
+	}
+
+	@Test
+	public void queryByPage() throws IOException {
+		List<Person> personList = personService.queryByPage();
+		log.info("分页查询ES：{}",JSON.toJSONString(personList));
+	}
+
+	@Test
+	public void termQuery() throws IOException {
+		Person person = new Person();
+		person.setUsername("一点点");
+		List<Person> personList = personService.termQuery(person);
+		log.info("根据搜索字段匹配查询ES：{}",JSON.toJSONString(personList));
 	}
 
 }

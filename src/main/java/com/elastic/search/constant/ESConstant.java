@@ -7,5 +7,8 @@ package com.elastic.search.constant;
  */
 public class ESConstant {
 
+    public static final String index = "user_info";
+
+    public static final String doc_type = "doc";
 
 }
