@@ -1,28 +1,24 @@
 package com.elastic.search;
 
 import com.elastic.search.entity.Person;
+import com.elastic.search.util.DateUtil;
 import com.elastic.search.util.ElasticsearchUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.search.TotalHits;
-import org.elasticsearch.action.DocWriteResponse;
-import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
-import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
-import org.elasticsearch.client.IndicesClient;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.text.Text;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -35,16 +31,14 @@ import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
 import org.elasticsearch.search.sort.SortOrder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.beans.BeanMap;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 
 @Component
@@ -54,87 +48,6 @@ class EsTests extends ElasticsearchApplicationTests{
 	@Autowired
 	RestHighLevelClient client;
 
-
-	//创建索引库
-	@Test
-	public void testCreateIndex() throws IOException {
-		//创建索引对象
-		CreateIndexRequest createIndexRequest = new CreateIndexRequest("studymodel");
-		//设置参数
-		createIndexRequest.settings(Settings.builder().put("number_of_shards","1").put("number_of_replicas","0"));
-		//指定映射
-		createIndexRequest.mapping("doc"," {\n" +
-				" \t\"properties\": {\n" +
-				"            \"studymodel\":{\n" +
-				"             \"type\":\"keyword\"\n" +
-				"           },\n" +
-				"            \"name\":{\n" +
-				"             \"type\":\"keyword\"\n" +
-				"           },\n" +
-				"           \"description\": {\n" +
-				"              \"type\": \"text\",\n" +
-				"              \"analyzer\":\"english\"\n" +
-				"           },\n" +
-				"           \"pic\":{\n" +
-				"             \"type\":\"text\",\n" +
-				"             \"index\":false\n" +
-				"           }\n" +
-				" \t}\n" +
-				"}", XContentType.JSON);
-		//操作索引的客户端
-		IndicesClient indices = client.indices();
-		//执行创建索引库
-		CreateIndexResponse createIndexResponse = indices.create(createIndexRequest,RequestOptions.DEFAULT);
-		//得到响应
-		boolean acknowledged = createIndexResponse.isAcknowledged();
-		System.out.println(acknowledged);
-	}
-
-	//添加文档
-	@Test
-	public void testAddDoc() throws IOException {
-		//文档内容
-		//准备json数据
-		Map<String, Object> jsonMap = new HashMap<>();
-		jsonMap.put("name", "spring cloud实战");
-		jsonMap.put("description", "本课程主要从四个章节进行讲解： 1.微服务架构入门 2.spring cloud 基础入门 3.实战Spring Boot 4.注册中心eureka。");
-		jsonMap.put("studymodel", "201001");
-		SimpleDateFormat dateFormat =new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		jsonMap.put("timestamp", dateFormat.format(new Date()));
-		jsonMap.put("price", 5.6f);
-
-		//创建索引创建对象
-		IndexRequest indexRequest = new IndexRequest("elasticsearch_test","doc");
-		//文档内容
-		indexRequest.source(jsonMap);
-		//通过client进行http的请求
-		IndexResponse indexResponse = client.index(indexRequest,RequestOptions.DEFAULT);
-		DocWriteResponse.Result result = indexResponse.getResult();
-		System.out.println(result);
-	}
-
-	public void updateDoc() throws IOException {
-
-		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-		DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-		Person person = new Person();
-		person.setId(1L);
-		person.setUsername("test");
-		person.setAge (20);
-		person.setStatus(0);
-		person.setBirthday(LocalDate.parse("2020-01-01").format(formatter));
-		person.setRemark("备注");
-		person.setUpdateDate(LocalDateTime.now().format(formatter2));
-
-		XContentBuilder xContentBuilder = XContentFactory.jsonBuilder();
-		xContentBuilder = ElasticsearchUtils.objectToXContentBuilder(xContentBuilder, person);
-
-		UpdateRequest updateRequest = new UpdateRequest();
-		updateRequest.doc(xContentBuilder);
-
-		UpdateResponse update = client.update(updateRequest, RequestOptions.DEFAULT);
-	}
 
 	//查询文档
 	@Test

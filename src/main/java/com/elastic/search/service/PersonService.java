@@ -1,7 +1,10 @@
 package com.elastic.search.service;
 
 
+import com.elastic.search.entity.Person;
+
 import java.io.IOException;
+import java.util.List;
 
 /**
  * @Author: 凤凰[小哥哥]
@@ -21,6 +24,17 @@ public interface PersonService {
      * 创建添加文档
      * @return
      */
-    void addDoc() throws IOException;
+    void addDoc(Person person) throws IOException;
+
+    /**
+     * 修改文档
+     */
+    void updateDoc(Person person) throws IOException;
+
+    /**
+     * 批量新增
+     * @param personList
+     */
+    void batchInsert(List<Person> personList);
 
 }
