@@ -1,48 +1,22 @@
 package com.elastic.search;
 
-import com.elastic.search.entity.GoodsInfo;
-import com.elastic.search.entity.PaymentRequest;
+
+import com.elastic.search.service.PersonService;
 import com.elastic.search.util.RSAUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import java.util.Arrays;
-/*import java.util.IntSummaryStatistics;*/
-import java.util.List;
-/*import java.util.stream.Collectors;*/
+
+import java.io.IOException;
+
 
 @Slf4j
 @SpringBootTest
 class ElasticsearchApplicationTests {
 
 
-    @Test
-    void contextLoads() {
-        List<GoodsInfo> goodsInfoList = Arrays.asList(
-             /*   new GoodsInfo( "娃哈哈",1 ,"娃哈哈"),
-                new GoodsInfo(  "小白兔",2,"小白兔"),*/
-                new GoodsInfo( "乖小孩",5 ,"乖小孩"));
 
-      /*  IntSummaryStatistics collect = goodsInfoList.stream().collect( Collectors.summarizingInt( GoodsInfo::getProductSkuQuantity ) );
-        long sum = collect.getSum();*/
-
-        /*StringBuffer sb = new StringBuffer(  );
-        for (int i=0;i< goodsInfoList.size();i++) {
-            GoodsInfo goodsInfo = goodsInfoList.get( i );
-            sb.append( goodsInfo.getProductSkuName() );
-            sb.append( "^" );
-            sb.append( goodsInfo.getProductSkuQuantity());
-            if (i< goodsInfoList.size() -1){
-                sb.append( "|" );
-            }
-        }*/
-       /* String body = body(goodsInfoList);
-        log.info("得到的结果：{}",body);
-*/
-    }
-/*    private String body(List<GoodsInfo> goodsInfos){
-        return  goodsInfos.stream().map(GoodsInfo::getProductSkuDesc).collect(Collectors.joining("|"));
-    }*/
 
     @Test
     public void rsaTest(){
@@ -73,12 +47,12 @@ class ElasticsearchApplicationTests {
             System.out.println("状态:" + status);
     }
 
+    @Autowired
+    PersonService personService;
+
     @Test
-    public void string(){
-         String a = "123";
-         String b = "123";
-        System.out.println(a == b);
-        System.out.println(a.equals( b ));
+    public void string() throws IOException {
+      personService.addDoc();;
     }
 }
 

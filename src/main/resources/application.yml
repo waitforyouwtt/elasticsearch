@@ -1,3 +1,13 @@
-#禁止使用通配符误删除
-action:
-  destructive_requires_name: true
+server:
+  port: 8080
+  compression:
+    enabled: true
+  servlet:
+    session:
+      timeout: 3600s
+      cookie:
+        max-age: 36000s
+
+#ES 配置
+elasticsearch:
+    nodes: 127.0.0.1:9200,192.168.1.X2:9200,192.168.1.X3:9200
